@@ -1,0 +1,627 @@
+<?php
+
+/*
+ * @file
+ * Handles custom coding for adding to shopping cart restrictions for user.
+ * 
+ * the module will be creating the constratint to buy the "time on sight" product before 
+ * adding any product to the shopping cart. 
+ * which  will be handled if the user role is Authenticated user,
+ * users will not be able to add items to the shopping cart.
+ * 
+ * he/she needes to purchase the time on sight package to continue adding to the basket.
+ * 
+ * The reviews will be totally free to download.
+ */
+
+/*
+ * run uc_roles_cron after 30 mintues when a user has been created.
+ */
+
+define("TIME_PACKAGE_NODE", 1); /*change if incase user have deleted the current package.*/
+define('MAX_REVIEWS_PER_SESSION', 5); /*max reviews per session.*/
+
+module_load_include('inc', 'uc_file', 'uc_file.rules');
+/*hook_uc_add_to_cart*/
+
+function uc_custom_uc_add_to_cart($nid, $qty, $data) {
+    
+    $expired_role= _uc_custom_remove_expired_role(); // run the role check. 
+    if($expired_role==true)
+    {
+       $result[] = array(
+                  'success' => FALSE,
+                  'message' => t('Sorry, Your time has been expired.'),
+                );
+       return $result;
+       exit;
+    }
+    //return false cnd change the return value to false. so the item won't be added. exit;
+    
+    
+    
+   global $user; 
+   $result = array('success' => TRUE); // default return value
+    
+   
+   
+    
+    // Check if the user has the 'editor' role.
+    //Review downloader - is the authenticated user to add to cart
+    //authenicated user Downloaded - is the role that is assigned to a person to download his/her content which she/he have purchased.
+    // 
+    
+    if (!in_array('Review downloader', $user->roles) && $nid!=TIME_PACKAGE_NODE) 
+        {
+    
+
+            //redirect to Node/1 which is the time package.
+
+           /* $result[] = array(
+                  'success' => FALSE,
+                  'message' => t('Sorry, you have to purchase your time duration to get access to add this to your cart.')
+                );*/
+            
+                drupal_set_message("Please purchase a package first, to get the review.");
+                drupal_goto('node/1');
+                
+
+            if ($qty > 1) 
+            {
+                $result[] = array(
+                  'success' => FALSE,
+                  'message' => t('Sorry, you can only add one of those at a time.'),
+                );
+            }
+
+    
+        }
+        else if(in_array('Review downloader', $user->roles) && $nid==TIME_PACKAGE_NODE ) // already purchased the role and trys to buy another one 
+        {
+            drupal_set_message("You have already purchased time duration to get your reviews. add  reviews to your shopping basket soon before it's late.",'error');
+            drupal_goto();
+        }
+        else if($nid==TIME_PACKAGE_NODE) // if this is the package.
+        {
+           $item_exsits = false;
+           $items =  uc_cart_get_contents();
+           if($items!=null)
+           {
+               foreach($items as $item)
+               {
+                    if($item->nid==TIME_PACKAGE_NODE){
+                        $item_exsits = true;
+                        uc_cart_remove_item($item->nid,$item->cart_id,$item->data); //remove perviously added packages if the user trys to add another type of the package.
+                           
+                        //dsm("true");
+                    } 
+                    else
+                    {
+                        //dsm("false");
+                    }
+               }
+           }
+           
+           
+           //dsm($items);
+        }
+        
+  return $result;
+}
+
+/*removed qty from the uc_Cart. uc_qty_project*/
+//function uc_product_uc_cart_display($item) - uc_product.module.
+//function uc_cart_view_form($form, &$form_state, $items = NULL) - removed update cart button in the uc_cart.module.
+
+
+
+/**
+* Implements hook_block_info().
+ * 
+ * the block created by code to display the users expire time.
+*/
+function uc_custom_block_info() {
+  $blocks = array();
+  $blocks['EXPIRE_TIME_USER'] = array(
+    'info' => t('EXPIRE TIME USER'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  $blocks['SHOPPING_BASKET_CONTENT_USER']= array(
+    'info' => t('Shopping basket content'),
+    'cache' => DRUPAL_NO_CACHE,  
+  );
+  $blocks['FILE_TRANSFER_BLOCK']= array(
+    'info' => t('Animated GIF file_transfer'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  $blocks['SHOPPING_BASKET_COUNT']=array(
+    'info' => t('Shopping basket content files'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  
+  return $blocks;
+}
+
+
+/**
+* Implements hook_block_view().
+*/
+function uc_custom_block_view($delta = '') {
+  
+  _uc_custom_remove_expired_role(); // call expire role function.
+  $block = array();
+  switch ($delta) {
+    case 'EXPIRE_TIME_USER':
+      $block['subject'] = 'Time Left:';
+      $block['content'] = _uc_custom_block_expire_content();
+      break;
+    case 'SHOPPING_BASKET_CONTENT_USER':
+        if (user_access('access content')) {
+        $block['subject'] = 'Add Reviews to Your Basket Now!';
+        $block['content'] = _uc_custom_block_shopping_basket_content();
+        }
+        else
+        {
+             $block['content'] = t('No content available.');
+        }
+        break;
+        
+    case 'FILE_TRANSFER_BLOCK':
+      $block['subject'] = 'Processing...';
+      $block['content'] = _uc_custom_block_file_trasnfer();
+      break;
+  
+     case 'SHOPPING_BASKET_COUNT':
+      $block['subject'] = 'Count of Files';
+      $block['content'] = _uc_custom_get_accessed_file_number();
+      break;
+         
+    
+  }
+  return $block;
+}
+
+
+function _uc_custom_block_file_trasnfer()
+{
+       drupal_add_css(drupal_get_path('module', 'uc_custom') . '/css/uc_custom.css', array('group' => CSS_DEFAULT, 'every_page' => TRUE));
+ 
+      global $base_url;
+      $block = "<img class='file_transfer' src='".$base_url."/".drupal_get_path('module', 'uc_custom')."/img/file_transfer_small.gif'/>";
+      return $block;
+    
+}
+
+
+/* the content of user expire*/
+function _uc_custom_block_expire_content() {
+    
+    drupal_add_css(drupal_get_path('module', 'uc_custom') . '/css/flipclock.css', array('group' => CSS_DEFAULT, 'every_page' => TRUE));
+    drupal_add_js(drupal_get_path('module', 'uc_custom') . '/js/flipclock.min.js');
+    drupal_add_js(drupal_get_path('module', 'uc_custom') . '/js/uc_custom.js');
+    
+    global $user;
+    $account = $user;
+    $output = '
+        <div id="expire_time">
+            <div class="your-clock"></div>
+            
+            <span class="time">';
+    $form = array();
+
+  $expirations = db_query("SELECT * FROM {uc_roles_expirations} WHERE uid = :uid", array(':uid' => $account->uid));
+  foreach ($expirations as $expiration) 
+      {
+    $form[$expiration->rid] = array(
+                                  '#type' => 'user_profile_item',
+                                  '#title' => check_plain(_uc_roles_get_name($expiration->rid)),
+                                  '#markup' => t('This role will expire on !date', array('!date' => format_date($expiration->expiration, 'short'))),
+                                );
+    
+       $now = new DateTime();
+       $timestamp = $expiration->expiration;
+       $expiration = new DateTime(gmdate("Y-m-d\TH:i:s\Z", $timestamp));
+
+       $remaining = $expiration->diff($now);
+       $seconds =$remaining->i*60 + $remaining->h*60*60 + ($remaining->s-1);
+       //$output.= $remaining->format("%h:%i:%s");
+       $output .= '<input id="timestamp" type="hidden" value="'.$seconds.'"/>';
+   
+    }
+
+  // Don't display anything if there aren't any expirations.
+  if (!count($form)) {
+    return;
+  }
+   
+  
+      
+  
+    
+  $output.="</span>
+      </div>";
+  
+  
+  //removr user role if it's expired.
+  
+  return $output;
+}
+
+//returns the order id that is created at last.
+/*
+ * logic this is only created  when a user purchased a time duration.
+ * so the person who logged in will be having the last order id at the time when he get access
+ * to the get review option.
+ */
+function _get_last_order_id_user()
+{
+    global $user;
+    /*get last order id */
+    $order_id = db_query("SELECT order_id FROM {uc_orders} WHERE uid=:uid ORDER BY order_id DESC LIMIT 0,1",array(':uid' => $user->uid));
+    $order_id_number = null;
+    
+    foreach ($order_id as $order_id_single) {
+        
+        $order_id_number= $order_id_single->order_id;
+    
+    }
+    /*eof get last order id*/
+    
+    return $order_id_number;
+}
+
+/**/
+function _uc_custom_block_shopping_basket_content()
+{
+    
+    $item_count = 0;
+    
+    $order_id_number = _get_last_order_id_user(); // get the last order id.
+    
+    if($order_id_number!=null)
+    {
+        $order = uc_order_load($order_id_number);
+        $i=0;
+        $item_count = count($order->products)-1;
+        
+        if($item_count==0)
+        {
+            $output = t("Hurry!!!, Click on 'get review' to add reviews to Basket.");
+        }
+        else 
+        {
+            if($item_count==MAX_REVIEWS_PER_SESSION)
+            {
+                $output = t("It's full.You Have reached your maximum limit of reviews per session.
+                             You cannot add more to this Basket.<br/>");
+            }
+        
+            $output = "<b>{$item_count} Items</b><br/>";
+           /* $output .="<ul>";
+
+            foreach($order->products as $key=>$product)
+            {
+                if($product->nid!=TIME_PACKAGE_NODE)
+                {
+                    $i++;
+                    $output .= '<li>'.$product->title.'</li>';
+                    //dsm($product);
+                }
+
+            }
+            $output .="</ul>";*/
+        }
+    }
+    
+    return '<span class="temp_msg">'.$output.'</span>';
+}
+
+/*
+ *  check if the time is expired of the user and remove role usilng uc_roles.
+ *  run combine with the block used to display time left.
+ */
+
+ 
+function _uc_custom_remove_expired_role()
+{
+    global $user;
+    $expired_role = false;
+    $account = $user;
+    //run the cron if the user has expired the role.
+    //cron will take care of the expiring process after tht.
+    
+    //drupal_cron_run();
+    $form = array();
+    $expirations = db_query("SELECT * FROM {uc_roles_expirations} WHERE uid = :uid AND expiration <= :srtime", array(':uid' => $account->uid,':srtime'=>REQUEST_TIME));
+        
+    foreach ($expirations as $expiration) {
+        $form[] = format_date($expiration->expiration);
+    
+    }
+    
+    if($form!=null) // if this isn't null it means that this is the time to run the cron and expire the role.
+    {
+        $expired_role = true;
+        uc_roles_cron(); // run the cron.
+        //drupal_flush_all_caches();
+        //DrupalWebTestCase::refreshVariables();
+    }
+  
+    return $expired_role;
+}
+
+
+/*add to cart button alter
+ * 
+ * change the name to "add to basket" for review downloder role, others it's buy time.";
+ */
+function uc_custom_form_uc_product_add_to_cart_form_alter(&$form, &$form_state) {
+   
+   
+  drupal_add_css(drupal_get_path('module', 'uc_custom') . '/css/uc_custom.css', array('group' => CSS_DEFAULT, 'every_page' => TRUE));
+   
+  global $user; 
+  $availability_check = _uc_custom_check_already_in_basket($form);
+
+  if(in_array('Review downloader', $user->roles)){ //override the from submit method for Review downloader. allow them to add to file download section directly.
+      
+      if($availability_check==true && in_array('authenicated user Downloaded', $user->roles))
+       {
+               $form['actions']['submit']['#value'] = 'Download Review';
+               $form['actions']['submit']['#attributes']['class'][] ='download' ; //add class
+               $form['#submit'] = array('_uc_custom_get_download_review'); // override the action for the download link if the user have already added the review to the shopping basket.
+               
+               //drupal_goto(drupal_get_destination());
+       }
+       else{
+            
+            $form['actions']['submit']['#value'] = 'Add to Basket';
+            $form['actions']['submit']['#attributes']['class'][]='add_to_basket' ; //add class
+
+
+          /* force the form to use my submision method, overrides the default add to cart method.
+           * $form['#submit'] = array('YOUR_SUBMISSION_CALLBACK_FUNCTION');
+           */
+           $form['#submit'] = array('uc_custom_add_to_basket_form_submit');
+            
+       }
+  }
+  else{
+      
+       //check if the user has already included it to their shopping basket, if so display the download link directly there.
+       // dsm($form);
+      
+      
+       if($availability_check==true && in_array('authenicated user Downloaded', $user->roles))
+       {
+               $form['actions']['submit']['#value'] = 'Download Review';
+               $form['actions']['submit']['#attributes']['class'][] ='download' ; //add class
+               $form['#submit'] = array('_uc_custom_get_download_review'); // override the action for the download link if the user have already added the review to the shopping basket.
+           
+       }
+       else if($form['nid']['#value']==TIME_PACKAGE_NODE)
+       {
+                    
+               $form['actions']['submit']['#value'] = 'Buy time';
+               $form['actions']['submit']['#attributes']['class'][] ='buy_time' ; //add class
+       }
+       else{
+
+               $form['actions']['submit']['#value'] = 'Buy time to get this';
+               $form['actions']['submit']['#attributes']['class'][] ='buy_time' ; //add class
+           }
+        //$form['#submit'] = array('_uc_custom_get_download_review'); // delete this later.
+      }
+      
+      $form_state['rebuild'] = TRUE;
+      
+      
+}
+
+/* update the last order id with the products that added in to the cart.
+ * give file download purmissions, add it to file downloads section.
+ * 
+ *  this function will only get called if the user role is a review downloader.
+ *  check for the expiration first. then proceed.
+ */
+function uc_custom_add_to_basket_form_submit($form, &$form_state)
+{
+    $expired_role= _uc_custom_remove_expired_role();
+    $destination = drupal_get_destination();
+    
+   
+    if($expired_role)
+    {
+       drupal_set_message("Please purchase a package first, to get the review.");
+       
+       
+    }
+    else
+        {
+
+
+        //dsm('start from here');
+
+
+
+        $order_id_number = _get_last_order_id_user(); // get the last order id.
+
+        if($order_id_number!=null)
+        {
+            /*add item to order*/
+            $order = uc_order_load($order_id_number);
+            $order_items_count = count($order->products)-1;
+            if($order_items_count<MAX_REVIEWS_PER_SESSION)
+            {
+            $product = uc_product_load_variant(intval($form['nid']['#value']));
+            $product->qty = $product->default_qty;
+
+              drupal_alter('uc_order_product', $product, $order);
+              uc_order_product_save($order->order_id, $product);
+              $order->products[] = $product;
+
+              uc_order_log_changes($order->order_id, array('add' => t('Added (@qty) @title to order.', array('@qty' => $product->qty, '@title' => $product->title))));
+
+              // Decrement stock.
+              if (module_exists('uc_stock')) {
+                uc_stock_adjust_product_stock($product, 0, $order);
+              }
+
+              // Add this product to the form values for accurate tax calculations.
+              $form_state['values']['products'][] = (array) $product;
+
+                 /*eof add item to order*/
+
+             /* add the file to file downloads*/
+                uc_file_action_order_renew($order);
+
+              /*eof add files to download*/
+
+                /*
+                 *  i can add the download link here. if it's annoying you can opt this out by commenting it.
+                 */
+                //drupal_goto(); // page will be refreshed.
+                //_uc_custom_get_download_review($form, $form_state);
+            }
+            else
+            {
+                drupal_set_message("Your Basket is full.You Have exceeded your item limit for this session.");
+
+            }
+        }
+    }
+    /*get last order id by the user.*/
+    //uc_order_edit_products_add($form, $form_state);
+     //check if the item is already in the order. say if it is there.
+    
+    //dsm($form);
+   // dsm($form_state);
+    //dsm('end here');
+    
+}
+
+
+/*download link directed to persons who have previlages to download*/
+function _uc_custom_check_already_in_basket($form)
+{
+  $availability = FALSE;  
+  global $user;
+  $nid = $form['nid']['#value'];
+     // Get all the files on this product.
+  $product_features = db_query("SELECT * FROM {uc_product_features} upf " .
+    "INNER JOIN {uc_file_products} ufp ON upf.pfid = ufp.pfid " .
+    "INNER JOIN {uc_files} uf ON ufp.fid = uf.fid " .
+    "WHERE upf.nid = :nid", array(':nid' => $nid));
+    
+  
+  foreach($product_features as $product_feature) 
+      {
+        
+        if ($file_user = _uc_file_user_get($user, $product_feature->fid)) 
+                {
+                     
+                   
+                          $availability = TRUE;
+                                
+            
+                        /*  $file_user = (array)$file_user;
+
+                          $old_limits = $file_user;
+
+                          // Get the limits from the product feature.
+                          // (Or global if it says pass through.)
+                          $file_modification = array(
+                            'download_limit' => uc_file_get_download_limit($product_feature),
+                            'address_limit'  => uc_file_get_address_limit($product_feature),
+                            'expiration'     => _uc_file_expiration_date(uc_file_get_time_limit($product_feature), max($file_user['expiration'], REQUEST_TIME)),
+                          );*/
+
+                }
+      
+      }
+      
+      return $availability;
+    
+}
+
+/*download link directed to persons who have previlages to download*/
+function _uc_custom_get_download_review($form, &$form_state)
+                {
+                global $user;
+                    
+                    if(!in_array('authenicated user Downloaded', $user->roles))
+                    {
+                       drupal_set_message("Please purchase a package first, to get the review.");
+                       exit;
+                    }
+                    
+                    //dsm('HUuu');
+                    $availability = FALSE;
+                    global $user;
+                    $nid = $form['nid']['#value'];
+                    
+                    $product_features = db_query("SELECT * FROM {uc_product_features} upf " .
+                                                    "INNER JOIN {uc_file_products} ufp ON upf.pfid = ufp.pfid " .
+                                                    "INNER JOIN {uc_files} uf ON ufp.fid = uf.fid " .
+                                                    "WHERE upf.nid = :nid", array(':nid' => $nid));
+                    
+                    foreach($product_features as $product_feature) 
+                          {
+
+                            if ($file_user = _uc_file_user_get($user, $product_feature->fid)) 
+                                    {
+
+
+                                              $availability = TRUE;
+                                              $fid=$product_feature->fid;
+
+                                            /*  $file_user = (array)$file_user;
+
+                                              $old_limits = $file_user;
+
+                                              // Get the limits from the product feature.
+                                              // (Or global if it says pass through.)
+                                              $file_modification = array(
+                                                'download_limit' => uc_file_get_download_limit($product_feature),
+                                                'address_limit'  => uc_file_get_address_limit($product_feature),
+                                                'expiration'     => _uc_file_expiration_date(uc_file_get_time_limit($product_feature), max($file_user['expiration'], REQUEST_TIME)),
+                                              );*/
+
+                                    }
+
+                          }
+                          
+                        if($availability==true)
+                        {
+                             /*change the name to this*/
+                             $form['actions']['submit']['#value'] = 'Download Review';
+                             $form['actions']['submit']['#attributes']['class'][] ='download' ; //add class
+                             $form['#submit'] = array('_uc_custom_get_download_review'); // override the action for the download link if the user have already added the review to the shopping basket.
+           
+                             
+                             
+                            drupal_goto('download/' . $fid); // direct to the download link if he/she have previlages.
+                            
+                        }
+                        else
+                        {
+                             drupal_set_message("Sorry, you do not have permissions to download this document.");
+                        }
+                }
+
+    
+ function _uc_custom_get_accessed_file_number()
+ {
+      global $user;
+      $account = $user;
+      $existing_download = db_query("SELECT fid FROM {uc_file_users} WHERE uid = :uid", array(':uid' => $account->uid));
+      $i=0;
+      foreach($existing_download as $file)
+      {
+         $i++; 
+      }
+           
+      return "".$i."";
+      
+ }
+
