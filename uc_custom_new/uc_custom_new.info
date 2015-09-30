@@ -1,0 +1,12 @@
+name = UC Custom NEW 
+description = REQUIRED. Controls the shopping cart and checkout for an Ubercart e-commerce site.
+dependencies[] = uc_file
+dependencies[] = uc_cart
+package = Ubercart - core
+core = 7.x
+
+version = "7.x-3.8"
+core = "7.x"
+project = "ubercart"
+datestamp = "1419116079"
+

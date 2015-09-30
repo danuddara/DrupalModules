@@ -1,0 +1,980 @@
+<?php
+
+function uc_custom_new_uc_add_to_cart($nid, $qty, $data) {
+    
+    $item_exsits= false;
+    $result[] = array('success' => TRUE);
+    $items =  uc_cart_get_contents();
+    remove_duplicates_in_Cart($nid);
+           
+           $node_this = node_load($nid);
+           //dsm($node_this->field_alias_of_another_review);
+           $alias_node = $node_this->field_alias_of_another_review;
+           if($alias_node!=null)
+           {
+                
+                $alias_nid = $alias_node['und'][0]['nid'];//nodeid;
+                $alias_this = node_load($alias_nid);
+                if($items!=null)
+                    {
+                        foreach($items as $item)
+                        {
+                             if($item->nid==$alias_nid){
+                                 $item_exsits = true;
+                                 uc_cart_remove_item($item->nid,$item->cart_id,$item->data); //remove perviously added packages if the user trys to add another type of the package.
+
+                                 //dsm("true");
+                             } 
+                             else
+                             {
+                                 //dsm("false");
+
+                             }
+                        }
+                    }
+               
+              
+               uc_cart_add_item($alias_nid,1);/*add alias node*/
+               $result[] = array('success' => FALSE);/*do not add the other item*/
+               drupal_set_message("<br/><br/>The<strong> {$node_this->title} </strong>is actually a <strong>{$alias_this->title}.</strong>Car manufacturers often make one car but give it several different names and sometimes a slightly different appearance, but they're really the same under the skin. This is one of these vehicles. Because all these cars are very similar, we include them all in this one review.");
+               drupal_goto('cart');
+           }
+     //dsm($result);     
+    return $result;       
+}
+
+function remove_duplicates_in_Cart($nid)
+{
+    $items =  uc_cart_get_contents();
+           if($items!=null)
+           {
+               foreach($items as $item)
+               {
+                    if($item->nid==$nid){
+                        $item_exsits = true;
+                        uc_cart_remove_item($item->nid,$item->cart_id,$item->data); //remove perviously added packages if the user trys to add another type of the package.
+                           
+                        //dsm("true");
+                    } 
+                    else
+                    {
+                        //dsm("false");
+                        
+                    }
+               }
+           }
+}
+
+function uc_custom_new_block_info() {
+  $blocks = array();
+
+  $blocks['SHOPPING_BASKET_COUNT_NEW']=array(
+    'info' => t('Shopping basket content files NEW'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  
+  $blocks['MAKE_IMAGE']=array(
+    'info' => t('get make image'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  
+  $blocks['FILE_DOWNLOADS']=array(
+    'info' => t('get file downloads'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  
+  $blocks['I_DONT_KNOW']=array(
+    'info' => t('get user inputs to recommend'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  
+  $blocks['EMAIL_LIST']=array(
+    'info' => t('email form'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  
+  $blocks['DOWNLOAD_CREDITS']=array(
+    'info' => t('download credits'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  
+  
+  return $blocks;
+}
+
+
+/**
+* Implements hook_block_view().
+*/
+function uc_custom_new_block_view($delta = '') {
+  
+ 
+  $block = array();
+  switch ($delta) {
+     
+     case 'SHOPPING_BASKET_COUNT_NEW':
+      $block['subject'] = 'Count of Files';
+      $block['content'] = _uc_custom_new_get_accessed_file_number();
+      break;
+  
+      case 'MAKE_IMAGE':
+      $block['subject'] = 'Get the Make image';
+      $block['content'] = _uc_custom_get_image();
+      break;
+      
+      case 'FILE_DOWNLOADS':
+      $block['subject'] = 'Get the files';
+      $block['content'] = _uc_custom_get_file_downloads_table();
+      break;
+  
+      case 'I_DONT_KNOW':
+      $form = drupal_get_form('recommend_select_list_form');
+      $block['subject'] = 'Get the user inputs to recommned vehicle';
+      $block['content'] = $form;
+      break;
+  
+     case 'EMAIL_LIST':
+      $form = drupal_get_form('send_email_list_form');
+      $block['subject'] = 'send form for email list';
+      $block['content'] = $form;
+      break;
+  
+      case 'DOWNLOAD_CREDITS':
+      $block['subject'] = 'Get the users download credit limit';
+      $block['content'] = _uc_custom_get_user_download_credits();
+      break;
+    
+  }
+  return $block;
+}
+
+function _uc_custom_get_user_download_credits()
+{
+    global $user;
+    $html ="";
+    $download_credit_count=0;
+    
+     $user_fields = user_load($user->uid);
+        
+        $download_credit = $user_fields->field_download_credit;
+       // var_dump($download_credit);
+        if(!empty($download_credit))
+                       {   $download_credit_count=$download_credit['und']['0']['value']; }
+    
+     if($download_credit_count>=1)
+     {
+         $html = '<p class="reviews-available"><strong>You have '.$download_credit_count.' download credits available</strong>. Would you like to <strong><a href="/get-reviews">download some reviews</a>?</strong></p>';
+     }
+    return $html;
+}
+
+ function _uc_custom_new_get_accessed_file_number()
+ {
+      global $user;
+      $account = $user;
+      $existing_download = db_query("SELECT fid FROM {uc_file_users} WHERE uid = :uid", array(':uid' => $account->uid));
+      $i=0;
+      foreach($existing_download as $file)
+      {
+         $i++; 
+      }
+           
+      return "".$i."";
+      
+ }
+
+ function _uc_custom_get_image()
+ {
+     global $base_root;
+     
+        $files_path = $base_root . base_path() . "sites/default/files/";
+        $theme_path = $base_root . base_path() . path_to_theme('themes', 'dogandlemon');
+        
+     $link_path = $_GET['q'];
+     $link_array = explode('/', $link_path);
+     $print = '';
+     if($link_array!=null && count($link_array)!=1)
+     {
+         if(strtolower($link_array[0])=='vehicles')//get the taxonomy term for vechiles page.
+         {
+             $index_last = count($link_array)-1;
+             $string = str_replace('-',' ', $link_array[$index_last]);
+             $term = taxonomy_get_term_by_name($string);
+             $term_name = strtoupper($string);
+			 
+             if($term!=null)
+             {
+                 $key = array_keys($term);
+                 $term = $term[$key[0]];
+                 $term_image = $term->field_term_image;
+		 
+		 
+		 
+		 if($term_image!=null)
+		 {
+                 $term_img_src = $term_image['und'][0]['filename'];
+                 $print = $files_path.$term_img_src;
+                 $print= "<a href='$base_root/get-reviews'><img src='$print'/></a>";
+		 $print.= "<h1>$term_name</h1>";
+		 $print.= "<ul id='vglossary'></ul>";
+		 }
+                 //dsm($term[0]);
+             }
+         }
+		 else if(strtolower($link_array[0])=='recommendedvehicles')
+		 {
+			 $index_last = count($link_array)-1;
+             $string = str_replace('-',' ', $link_array[$index_last]);
+             $term = taxonomy_get_term_by_name($string);
+             $term_name = strtoupper($string);
+			 
+             if($term!=null)
+             {
+                 $key = array_keys($term);
+                 $term = $term[$key[0]];
+                 $term_image = $term->field_type_image;
+		 
+		 
+		 
+				 if($term_image!=null)
+				 {
+						 $term_img_src = $term_image['und'][0]['filename'];
+						 $print = $files_path.$term_img_src;
+						 $print= "<a href='$base_root/recommended'><img src='$print'/></a>";
+				 $print.= "<h1>$term_name</h1>";
+				 $print.= "<ul id='vglossary'></ul>";
+				 }
+                 //dsm($term[0]);
+             }
+		 }
+		 
+     }
+     else
+     {
+         
+     }
+     
+     
+     
+     return $print;
+ }
+
+ 
+  /*load PDF of content type article if selected*/
+ 
+ function uc_custom_new_node_view($node, $view_mode, $langcode) {
+     
+     global $base_root;
+     
+        $files_path = $base_root . base_path() . "sites/default/files/";
+     
+     $pdf = "";
+  if ($node->type == 'article' && $view_mode == 'full' && arg(0) == 'node') {
+           // dsm($node);
+   
+            
+            
+            $pdf_obj = $node->field_pdf_;
+             $display_pdf = $node->field_display_pdf;
+            if($pdf_obj!=null)
+            {
+                $pdf_link = $pdf_obj['und'][0]['filename'];
+                
+                if($display_pdf!=null)
+                {
+                   $show = $display_pdf['und'][0]['value'];
+                   if($show==true)
+                   {
+                       drupal_goto($files_path.$pdf_link);
+                   }
+                }
+                
+            }
+            
+            //drupal_goto($files_path.$pdf_link);
+             //drupal_goto('url/' . $node->nid);
+  }
+}
+
+
+/*get nid from sku*/
+function uc_get_nid_from_sku($sku) {
+    $value = false;
+ $result_rs = db_query("SELECT nid FROM {uc_products} WHERE model='$sku'");
+  $result = $result_rs->fetchObject();
+  
+  if($result!=null)
+  {
+   $value= $result->nid;
+  }
+  return $value;
+}
+
+
+
+
+function _uc_custom_get_file_downloads_table()
+{
+     global $base_root;
+     $file_link = $img_linked="";
+     $files_path = $base_root . base_path() . "sites/default/files/";
+     $img_url = $files_path.'styles/thumbnail/public/default_images/default.jpg';
+     $img_linked = "<img src='{$img_url}'/>";
+     
+    global $user;
+    $account = $user;
+    $header = array(
+    array('data' => t('Purchased'  ), 'field' => 'u.granted', 'sort' => 'desc'),
+    array('data' => t('Filename'   ), 'field' => 'f.filename'),
+    array('data' => t('Description'), 'field' => 'p.description'),
+    array('data' => t('Downloads'  ), 'field' => 'u.accessed'),
+    array('data' => t('Addresses'  )),
+);
+    
+   
+
+  //drupal_set_title(t('File downloads'));
+
+  $files = array();
+
+  $query = db_select('uc_file_users', 'u')->extend('PagerDefault')->extend('TableSort')
+    ->condition('uid', $account->uid)
+    ->orderByHeader($header)
+    ->limit(UC_FILE_PAGER_SIZE);
+  $query->leftJoin('uc_files', 'f', 'u.fid = f.fid');
+  $query->leftJoin('uc_file_products', 'p', 'p.pfid = u.pfid');
+  $query->fields('u', array(
+      'granted',
+      'accessed',
+      'addresses',
+      'file_key',
+      'download_limit',
+      'address_limit',
+      'expiration',
+    ))
+    ->fields('f', array(
+      'filename',
+      'fid',
+    ))
+    ->fields('p', array('model'));
+
+  $count_query = db_select('uc_file_users')
+    ->condition('uid', $account->uid);
+  $count_query->addExpression('COUNT(*)');
+
+  $query->setCountQuery($count_query);
+
+  $result = $query->execute();
+
+  $row = 0;
+  foreach ($result as $file) {
+      
+    $sku_file = $file->model;
+    $nid2 = uc_get_nid_from_sku($sku_file);/*get node id for file*/ 
+    if($nid2!=false)
+    {
+    $node2 = node_load($nid2);
+    $tile_name_node = $node2->title;
+     
+     
+     
+     $prod_img = $node2->uc_product_image;
+     if($prod_img!=null)
+     {
+         $files_imgs = $node2->uc_product_image;
+         $image_file = $files_imgs['und'][0]['uri'];
+         $style_name = 'thumbnail';
+         $img_url = image_style_url($style_name, $image_file);
+      
+     }
+     $img_linked = "<a href='{$base_root}/node/{$nid2}'><img src='{$img_url}'/></a>";
+    }
+     //dsm($node2->uc_product_image);
+     //dsm($img_linked);
+     
+    $download_limit = $file->download_limit;
+    
+    // Set the JS behavior when this link gets clicked.
+    $onclick = array(
+      'attributes' => array(
+        'onclick' => 'uc_file_update_download(' . $row . ', ' . $file->accessed . ', ' . ((empty($download_limit)) ? -1 : $download_limit) . ');', 'id' => 'link-' . $row
+      ),
+    );
+
+    // Expiration set to 'never'
+    if ($file->expiration == FALSE) {
+        if($nid2==false)
+        {
+         $file_link = l(basename($file->filename), 'download/' . $file->fid, $onclick);
+            
+        }
+        else
+        { $file_link = l(basename($tile_name_node), 'download/' . $file->fid, $onclick);}
+    }
+
+    // Expired.
+    elseif (REQUEST_TIME > $file->expiration) {
+        if($nid2==false)
+        {
+            $file_link = basename($file->filename);
+        }
+        else
+        {      $file_link = basename($tile_name_node);}
+    }
+
+    // Able to be downloaded.
+    else {
+        if($nid2==false)
+        {
+            $file_link = l(basename($file->filename), 'download/' . $file->fid, $onclick) . ' (' . t('expires on @date', array('@date' => format_date($file->expiration, 'uc_store'))) . ')';
+        }
+        else{
+            $file_link = l(basename($tile_name_node), 'download/' . $file->fid, $onclick) . ' (' . t('expires on @date', array('@date' => format_date($file->expiration, 'custom','d/m/Y'))) . ')';
+            }
+        
+    }
+
+    $files[] = array(
+      'granted' => $file->granted,
+      'link' => $file_link,
+      'description' => $img_linked,
+      'accessed' => $file->accessed,
+      'download_limit' => $file->download_limit,
+      'addresses' => $file->addresses,
+      'address_limit' => $file->address_limit,
+    );
+    $row++;
+  }
+
+  $build['downloads'] = array(
+    '#theme' => 'uc_file_user_downloads',
+    '#header' => $header,
+    '#files' => $files,
+  );
+
+  
+
+  return $build;
+}
+
+
+
+/*contact us form alter.*/
+function uc_custom_new_form_contact_site_form_alter(&$form, &$form_state) {
+    
+    
+    $form['price'] = array(
+    '#title'    => t('Your Price'),
+    '#type'     => 'textfield',
+    '#required' => FALSE,
+    );
+    
+     $form['purpose'] = array(
+    '#title'    => t('Your Purpose'),
+    '#type'     => 'textfield',
+    '#required' => FALSE,
+    );
+     
+     /*order*/
+     $order = array(
+    'name',
+    'mail',
+    'subject',
+    'cid',
+    'price',
+    'purpose',   
+    'message',
+    'copy',
+    'submit'
+  );
+ 
+  foreach ($order as $key => $field) {
+    // Set/Reset the field's 
+    // weight to the array key value
+    // from our order array. 
+    $form[$field]['#weight'] = $key;
+  }
+    
+}
+
+/*alter mail*/
+function uc_custom_new_mail_alter(&$message)
+{
+    if($message['id']=='contact_page_mail')
+    {
+        if(isset($message['params']['price']) && $message['params']['price']!='')
+        {
+            $message['body'][]= "<b/>".t('My Price')."</b>:".$message['params']['price'];
+        }
+        if(isset($message['params']['purpose']) && $message['params']['purpose']!='')
+        {
+            $message['body'][]= "<b/>".t('My Purpose')."</b>:".$message['params']['purpose'];
+        }
+    }
+    
+}
+
+
+
+
+/*menu alter*/
+function uc_custom_new_menu_alter(&$items) {
+  // If you have the Devel module installed, uncomment to retrieve list
+  // of registered menu items to figure out what to unset.
+  // kpr($items);
+
+    //dsm($items);
+  // Change the name of the Edit tab
+ // $items['user/%user/edit']['title'] = 'My Account';
+  
+  
+}
+
+/*i don't know what to buy section*/
+
+function recommend_select_list_form($form, &$form_state)
+{
+       // now I add a text field to the form
+    // with a label and fixed dimensions (you never know...)
+   $options_1 = array(
+      'I_carry_just_two' => t('I carry just two'),
+      'I_carry_four' => t('I carry four'), 
+      'I_carry_six' => t('I carry six'),
+      'I_carry_seven' => t('I carry seven'),
+      'I_carry_eight' => t('I carry eight'),
+      'I_carry_lots_of_stuff' => t('I carry lots of stuff'),
+    );
+   
+     $options_2 = array(
+      'My_vehicle_must_be_practical_and_reliable' => t('My vehicle must be practical and reliable'), 
+      'I_do_not_need' => t("I don't need practicality,reliability or economy"),
+     );
+     
+     $options_3  =  array(
+      'I_care_about_the_planet' => t('I care about the planet'),
+      'I_hope_you_ecologists_freeze_and_starve_in_the_dark' => t('I hope you ecologists freeze and starve in the dark'), 
+     
+     );
+     
+     $options_4  =  array(
+      'Speed_is_important' => t('Speed is important'),
+      'handle_well' => t("I like cars that handle well"), 
+     
+     );
+
+    $form['carry'] = array(
+      '#type' => 'radios',
+      '#title' => t(''),
+      '#options' => $options_1,
+      '#description' => t(''),
+     '#default_value' => isset($carry) ? $carry : NULL,
+      '#required'=>true,
+      '#element_validate' =>array('_mymodule_field_validate')
+    );
+    
+    $form['feel_safe']=array(
+
+       '#type' =>'checkbox', 
+       '#title' => t('I like cars that make me feel safe'),
+
+      );
+    
+    $form['favour'] =  array(
+      '#type' => 'radios',
+      '#title' => t(''),
+      '#options' => $options_2,
+      '#description' => t(''),
+      '#default_value' => isset($favour) ? $favour : NULL,
+      '#required'=>false,
+    );
+    
+    $form['eco'] = array(
+      '#type' => 'radios',
+      '#title' => t(''),
+      '#options' => $options_3,
+      '#description' => t(''),
+      '#default_value' => isset($eco) ? $eco : NULL,
+        '#required'=>false,
+    );
+    
+    $form['speed'] = array(
+
+       '#type' =>'checkbox', 
+       '#title' => t("Speed is important"),
+
+      );
+    
+    $form['handle_well'] = array(
+
+       '#type' =>'checkbox', 
+       '#title' => t("I like cars that handle well"),
+
+      );
+    
+    $form['no_questions'] = array(
+
+       '#type' =>'checkbox', 
+       '#title' => t("Look, I just want cheap transport, okay?<br/>All these questions! Sheesh! "),
+
+      );
+    
+    $selected = array("I'm Rich","I'm on budget","I'm broke");
+    if(isset($_GET['id']))
+    {
+        $id = $_GET['id'];
+        $_SESSION['select_rtype'] = $selected[$id-1];
+    }
+    // now I add also a button
+    $form['submit'] = array
+    (
+       '#type' => 'submit',
+       '#value' => t('Send'),
+    );
+    
+    // and now I assign a my function as handler of the submit event 
+    $form['#submit'][] = 'selectlist_submit_handler';
+    return $form;
+}
+
+function recommend_select_list_form_validate($form, &$form_state) {
+    
+}
+
+function selectlist_submit_handler($form, &$form_state)
+{
+    // this function will be executed after the click
+    // event of the user on the "submit" button.
+    // here I only print a message
+    // you can access a database, redirect, or whatever you want, obviously 
+    $selected = array();
+    
+    if($form!=null)
+    {
+        unset($_SESSION['messages']['error']);
+        
+        $selected[] = $form['carry'][$form['carry']['#value']]['#title']; 
+        
+        if($form['favour']['#value']!=null)
+        {
+            $selected[] = $form['favour'][$form['favour']['#value']]['#title']; 
+        }
+        if($form['eco']['#value']!=null)
+        {
+        $selected[] = $form['eco'][$form['eco']['#value']]['#title']; 
+        }
+       
+         if($form['speed']['#checked']==true)
+        $selected[] = $form['speed']['#title']; 
+         
+         if($form['handle_well']['#checked']==true)
+        $selected[] = $form['handle_well']['#title']; 
+        
+        if($form['no_questions']['#checked']==true)
+        $selected[] = $form['no_questions']['#title']; 
+        
+        if($form['feel_safe']['#checked']==true)
+        $selected[] = $form['feel_safe']['#title']; 
+        
+        $_SESSION['list'] = $selected;
+        // drupal_set_message(t('okay'));
+        
+         drupal_goto('content/my-vehicle-choices');
+    }
+    else
+    {
+        drupal_set_message(t('You have to select one or more items from this list'),'error');
+    }
+    
+    
+}
+
+function _mymodule_field_validate($element, &$form_state, $form) {
+  if($element['#value'] == 0) {
+    $errors = &$_SESSION['messages']['error'];
+    if($errors!=null){
+            foreach($errors as $item => $message) {
+                      $errors[$item] = t('Please select the required items from this list');
+
+            }
+          }
+  }
+}
+
+/*send email form*/
+function send_email_list_form($form, &$form_state)
+{
+    if(!isset($_SESSION['list']))//if session is not set
+    {
+        drupal_goto('content/do-you-know-what-buy');
+    }
+    global $user;
+    $email = null;
+    if($user->uid!=0)
+    {
+        $email= $user->mail;
+    }
+    $form['name']= array(
+    '#type' => 'textfield',
+    '#title' => t('First name'),
+    '#required' => TRUE,
+    '#default_value' => NULL,
+    '#description' => "Please enter your first name.",
+    '#size' => 20,
+    '#maxlength' => 20,
+   );
+    
+     $form['email']= array(
+    '#type' => 'textfield',
+    '#title' => t('Email address'),
+    '#required' => TRUE,
+    '#default_value' =>$email,
+    '#description' => "Please enter your email.",
+    '#size' => 20,
+    '#maxlength' => 40,
+   );
+     
+     $items = $_SESSION['list'];
+     $ul = "<ul>";
+     foreach($items as $item)
+     {
+         $ul .= "<li>".$item."</li>";
+     }
+     $ul .="</ul>";
+     $markup= "<div id='choicelist'><strong>My choices</strong>".$ul."<br/></div>";
+     $form['some_text'] = array(
+        '#markup' => $markup
+      );
+
+    // now I add also a button
+    $form['submit'] = array
+    (
+       '#type' => 'submit',
+       '#value' => t('Send'),
+    );
+    
+     $form['#submit'][] = 'send_email_with_list_submit_handler';
+    return $form;
+}
+
+function send_email_with_list_submit_handler($form, &$form_state)
+{
+    $items = $_SESSION['list'];
+    $type = $_SESSION['select_rtype'];
+    
+    $name=$form['name']['#value'];
+    $from =$form['email']['#value'];;
+   // dsm($name,$from);
+    
+    $suc = mail_list($name,$from,$items,$type);
+    
+    if($suc==true){
+        
+        session_unset($_SESSION['list']);
+        session_unset($_SESSION['select_rtype']);
+        
+        drupal_set_message(t("Your email has been send sucessfully.We'll get back to you in short time"));
+    
+    }
+    else
+    {
+        drupal_set_message(t("Please try again later."));
+   
+    }
+}
+
+function mail_list($name,$from,$list,$type)
+{
+    $to = "info@dogandlemon.com";
+    $subject = "$type. I don't Know what to buy :$name ";
+
+        
+     $itemlist = "";
+     foreach($list as $item)
+     {
+         $itemlist .= "<tr><td>".$item."</td></tr>";
+     }
+     //dsm($itemlist);
+    
+    $message = "
+    <html>
+    <head>
+    <title>I don't Know what to buy - $type</title>
+    </head>
+    <body>
+    <table>
+    <tr>
+    <th>My name is $name</th>
+    </tr>
+    
+    $itemlist
+    
+    </table>
+    </body>
+    </html>
+    ";
+
+// Always set content-type when sending HTML email
+$headers = "MIME-Version: 1.0" . "\r\n";
+$headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+
+//dsm($message);
+// More headers
+$headers .= "From: $from" . "\r\n";
+
+
+    $suc = mail($to,$subject,$message,$headers);
+    return $suc;
+}
+
+
+
+
+/*free download method for administrators*/
+
+function uc_custom_new_form_uc_product_add_to_cart_form_alter(&$form, &$form_state) {
+    
+    global $user;
+    $download_credit_count = 0;
+    
+    if(user_is_logged_in())
+    {
+        
+        $user_fields = user_load($user->uid);
+        
+        $download_credit = $user_fields->field_download_credit;
+       // var_dump($download_credit);
+        if(!empty($download_credit))
+                       {   $download_credit_count=$download_credit['und']['0']['value']; }
+                if(in_array('administrator', $user->roles) || in_array('administrator', $user->roles)|| $download_credit_count>=1)
+                { 
+                    $form['submit_download'] = array(
+                      '#type' => 'submit',
+                      '#value' => t('Free Download'),
+                      '#weight' => 100,
+                      '#name' =>'free_download',
+                      '#submit'=>array('_uc_custom_new_download_free_review'),
+                      '#attributes' => array('class' => array('freedownload'))
+                    );
+
+                      //$form['#submit'][] = '_uc_custom_new_download_free_review';
+
+                }
+         
+                /*show only the free download button for users who have download credits*/
+        if($download_credit_count>=1 && !in_array('administrator', $user->roles))
+        {
+            //dsm($download_credit);
+            //dsm($form);
+            unset($form['actions']['submit']);
+        }
+    }
+}
+
+/*direct users to download link*/
+function _uc_custom_new_download_free_review($form)
+{
+    global $user;
+     $nid = $form['nid']['#value'];
+     
+     $fid=$availability=$fid_new=$new_files=null;
+     $product_features = db_query("SELECT * FROM {uc_product_features} upf " .
+                                                    "INNER JOIN {uc_file_products} ufp ON upf.pfid = ufp.pfid " .
+                                                    "INNER JOIN {uc_files} uf ON ufp.fid = uf.fid " .
+                                                    "WHERE upf.nid = :nid", array(':nid' => $nid));
+     foreach($product_features as $product_feature) 
+                          {
+
+                            if ($file_user = _uc_file_user_get($user, $product_feature->fid)) 
+                                    {
+
+
+                                              $availability = TRUE;
+                                              $fid=$product_feature->fid;
+
+                                          
+
+                                    }
+
+                          }
+                          
+                        if($availability==true)
+                        {
+                                                        
+                             
+                            drupal_goto('download/' . $fid); // direct to the download link if he/she have previlages.
+                            
+                        }
+                        else /*add this file to download*/
+                        {
+                            $files_free = db_query("SELECT * FROM {uc_file_products} fp " .
+                                                "INNER JOIN {uc_product_features} pf ON pf.pfid = fp.pfid " .
+                                                "INNER JOIN {uc_files} f ON f.fid = fp.fid " .
+                                                "WHERE nid = :nid", array(':nid' => $nid));
+                            
+                            
+                            
+                            
+                            
+                                    foreach ($files_free as $file) {
+      
+                                        // Either they match, or the file was set to any SKU.
+                                                                               
+                                        // Grab any existing privilege so we can calculate the new expiration time
+                                        // as an offset of the previous.
+                                        $file_user = _uc_file_user_get($user, $file->fid);
+
+                                        // Get the limit info from the product feature
+                                        $file_modification = array(
+                                          'download_limit' => uc_file_get_download_limit($file),
+                                          'address_limit' => uc_file_get_address_limit($file),
+                                          'expiration' => _uc_file_expiration_date(uc_file_get_time_limit($file),  NULL),
+                                        );
+
+                                        // Add file_user(s) for this file/directory. (No overwrite)
+                                        $new_files = uc_file_user_renew($file->fid, $user, $file->pfid, $file_modification, FALSE);
+                                        
+                                        $fid_new = $file->fid;
+                                        if($fid_new=!null && $new_files==TRUE)
+                                          {
+                                           
+                                            $user_fields = user_load($user->uid);
+        
+                                            $download_credit = $user_fields->field_download_credit;
+                                           // var_dump($download_credit);
+                                            if(!empty($download_credit))
+                                                           {   $download_credit_count=$download_credit['und']['0']['value']; 
+                                                                if($download_credit_count>=1)
+                                                                {
+                                                                    $download_credit_count--;
+                                                                    $edit_download_credit = array('field_download_credit'=>array(
+                                                                        'und' => array(
+                                                                                0 => array(
+                                                                                  'value' => $download_credit_count,
+                                                                                ),
+                                                                              ),
+                                                                    ));
+                                                                    
+                                                                    user_save($user_fields, $edit_download_credit);
+                                                                }
+                                                           }
+                                            
+                                            
+                                           _uc_custom_new_download_free_review($form);
+                                          }
+                                      }
+                                      
+                                      
+                            }
+}
+
+/*hide download credits*/
+function uc_custom_new_form_alter(&$form, &$form_state, $form_id) {
+    
+    global $user;
+     if (!in_array('administrator', $user->roles))
+        {
+            $form['field_download_credit']['#access'] = FALSE;
+        }
+     
+   
+}
