@@ -1,0 +1,529 @@
+<?php
+
+/* 
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+define('SUPPORT_TAXONOMY_VOCABULARY_VID_SALES_REGIONS', 5);//Sales Regions ID hardcoded to value of second Vocabulary
+define('SUPPORT_TAXONOMY_VOCABULARY_VID_SALES_BRANDS', 6);//Sales Brands vocalulary ID
+
+define('SUPPORT_TAXONOMY_VOCABULARY_ROOT', TRUE);//Product Vocabulary ROOT Shown
+define('SUPPORT_TAXONOMY_VOCABULARY_CHILD',TRUE);//Product Vocabulary CHILD Shown
+
+
+
+define('SUPPORT_THEME_PATH', '/'.drupal_get_path('theme', variable_get('theme_default', NULL)));
+define('SUPPORT_CONTENT_TYPES', 'on_farm_support');
+
+
+/**
+ * Implements hook_help().
+ */
+function onfarmsupport_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#onfarmsupport':
+      return t('<a href="@tt_url">Tru-Test On Farmm support</a> is a custom support module built in Drupal based on Tru-Test Group Information. Please contact Help Desk @ Tru-Test Group for more information.
+			 this module is used to add a filter to filter on farm representatives. ');
+  }
+}
+
+
+
+/**
+ * Implements hook_permission().
+ */
+function  onfarmsupport_permission() {
+  return array(
+    'administer tru-test onfarmsupport' => array(
+      'title' => t('Administer Tru-Test onfarmSupport'),
+      'description' => t('Perform maintenance tasks for Tru-Test onfarmsupport.'),
+    ),
+	'access tru-test onfarmsupport' => array(
+      'title' => t('View Tru-Test onfarm Support Blocks'),
+    ),
+  );
+}
+
+
+/**
+ * User view access callback.
+ *
+ * @param $account
+ *   Can either be a full user object or a $uid.
+ */
+function onfarmsupport_view_access($account) {
+  $uid = is_object($account) ? $account->uid : (int) $account;
+  // Never allow access to view the anonymous user account.
+  if ($uid) {
+    // Admins can view all, users can view own profiles at all times.
+    if ($GLOBALS['user']->uid == $uid || user_access('administer tru-test onfarmsupport')) {
+      return TRUE;
+    }
+    else if (user_access('access tru-test onfarmsupport')) {
+      // At this point, load the complete account object.
+      if (!is_object($account)) {
+        $account = user_load($uid);
+      }
+      return (is_object($account) && $account->status);
+    }
+  }
+  return FALSE;
+}
+
+
+
+
+/**
+ * Implements hook_requirements().
+ *
+ * @param string $phase
+ * @return array
+ */
+function onfarmsupport_requirements($phase) {
+	$requirements = array();
+	// Ensure translations don't break at install time
+	$t = get_t();
+	
+	// Report Drupal version
+  	if ($phase == 'runtime') {
+      $requirements['drupal'] = array(
+        'title' => $t('Drupal'),
+        'value' => VERSION,
+        'severity' => REQUIREMENT_INFO,
+      );
+    }
+	$requirements['onfarmsupport'] = array(
+		'title' => $t('Tru-test Group Support Dependency Modules '),
+	);
+
+	$requirements['onfarmsupport']['value'] = $t('Installed');
+	return $requirements;
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function onfarmsupport_theme() {
+	return array(
+		'onfarmsupport_blocks_form' => array(
+		'render element' => 'form',
+		'template' => 'onfarmsupport_form')
+	);
+}
+
+
+/**
+ * Process variables for onfarmsupport_block_form.tpl.php.
+ *
+ * The $variables array contains the following arguments:
+ * - $form
+ *
+ * @see support_block_form.tpl.php
+ */
+function template_preprocess_onfarmsupport_block_form(&$variables) {
+	$variables['onfarmsupport'] = array();
+	$hidden = array();
+	// Provide variables named after form keys so themers can print each element independently.
+	foreach (element_children($variables['form']) as $key) {
+		$type = $variables['form'][$key]['#type'];
+		if ($type == 'hidden' || $type == 'token')
+			$hidden[] = drupal_render($variables['form'][$key]);
+		else
+			$variables['onfarmsupport'][$key] = drupal_render($variables['form'][$key]);
+	}
+	// Hidden form elements have no value to themers. No need for separation.
+	$variables['onfarmsupport']['hidden'] = implode($hidden);
+	// Collect all form elements to make it easier to print the whole form.
+	$variables = implode($variables['onfarmsupport']);
+}
+
+
+
+
+
+/**
+ * Implementation of hook_block_info().
+ */
+function onfarmsupport_block_info() {	
+	
+        $blocks= array();
+	$blocks['onfarmsupport'] = array(
+    	'info' => t('Trutest onfarm support'),
+    	'cache' => DRUPAL_NO_CACHE,
+		'status' => TRUE, 
+		'properties' => array ('administrative' => FALSE),
+		'weight' => -50,
+		'region' => 'regional_page_left', // Not usually provided.
+		'visibility' => BLOCK_VISIBILITY_LISTED, // Not usually provided.
+		'pages' => 'contact-us'."\n", // Not usually provided.
+		'translatable' => TRUE,
+  	);
+	
+	
+
+	return $blocks;
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function onfarmsupport_block_save($delta = '', $edit = array()) {}
+
+
+function block_onfarmsupport_page() {
+  $page = array(
+    '#type' => 'markup',
+    '#markup' => t('The Block Tru-Test Onfarm Support provides forms for data to show. Enable and configure them on <a href="@url">the block admin page</a>.', array('@url' => url('admin/structure/block'))),
+  );
+  return $page;
+}
+
+/**
+ * Implements hook_block_configure().
+ */
+function onfarmsupport_block_configure($delta='') {
+	$form = array();
+	switch($delta) {
+
+		case 'onfarmsupport' :	$form['body'] = array(
+												'#type' => 'text_format',
+												'#title' => t('Tru-Test onfarm support Body text here'),
+												'#description' => t('This text will appear in the Tru-Test onfarm support block.'),
+												'#default_value' => t('<p><img alt="Manuals" src="'.SUPPORT_THEME_PATH.'/images/icons/Manuals-icon.png" /></p>'),
+											);
+											break;
+		
+		default :							break;
+	}
+	return $form;
+}
+
+
+/**
+ * Custom function to assemble renderable array for block content.
+ * Returns a renderable array with the block content.
+ * Implements hook_block_view().
+ * @return
+ * returns a renderable array of block content.
+ */
+function onfarmsupport_block_view($delta = '') {
+                
+	$block = array();
+	if (user_access('access tru-test onfarmsupport')) {
+		switch($delta) {
+
+			case 'onfarmsupport' :			
+                                        $block['subject'] = t('Onfarm support');
+                                        $block['body'] = array('#theme' => 'trutestgroup','#url' => 'contact-us', '#title' => t('<p><img alt="Manuals" src="'.SUPPORT_THEME_PATH.'/images/icons/Manuals-icon.png" /></p>'));
+                                        $block['message'] = array('prefix' => '<div class="trutest-manuals-block-message" id="block-message-'.drupal_html_class($delta).'">', 'markup' => $block['content']['#title'], 'suffix' => '</div>');
+                                        $block['content'] = drupal_get_form('onfarmsupport_form');
+                                        break;
+									
+			default :	break;
+		}
+	}
+     else
+      $block['content'] = t('Access is Restricted');
+	
+	//dsm('<pre>onfarmsupport_block_view->block: '.print_r($block,1).'</pre>');
+	return $block;
+}
+
+
+
+
+
+
+/**
+ * Implementation of hook_form().
+ */
+function onfarmsupport_form($form, &$form_state) {
+        drupal_add_js(drupal_get_path('module', 'onfarmsupport') . '/onfarmsupport_form.js');
+	global $language;
+        $catcode=null;
+	$params_SR = taxonomy_params();
+	$params_SR['root_term'] = FALSE;
+	$params_SR['vid'] = SUPPORT_TAXONOMY_VOCABULARY_VID_SALES_REGIONS;
+	$params_SR['root_term_name'] = 'Region';
+        $params_SR['child_term'] = SUPPORT_TAXONOMY_VOCABULARY_CHILD;
+	$params_SR['child_term_name'] = 'Region';
+        $labeltext="Meet your local reps for:";
+	If($language->language == 'en-NZ') {
+		$catcode=31; //31 NZ , 32 Aus
+		$labeltext = "Meet your local reps for:";
+	}
+        elseif($language->language == 'en-AU')
+        {
+            $catcode=32; //31 NZ , 32 Aus
+            //$farmreps = _onfarmsupport_getagentsdata(null,null);
+           // $html_out =  _onfarmsupport_rendertemplate($farmreps);
+            $labeltext = "Meet your managers for:";
+            $params_SR['root_term_name'] = 'Territory';
+            $params_SR['child_term_name'] = 'Territory';
+        }
+	$sales_regions = custom_get_taxonomy_root($params_SR);
+        
+        //dsm($sales_regions);
+        $params_SB = taxonomy_params();
+	$params_SB['root_term'] = SUPPORT_TAXONOMY_VOCABULARY_ROOT;
+	$params_SB['vid'] = SUPPORT_TAXONOMY_VOCABULARY_VID_SALES_BRANDS;
+	$params_SB['root_term_name'] = 'Category';
+        
+	$sales_brands = custom_get_taxonomy_root($params_SB);
+	
+	$form = array(
+    	'#prefix' => '<div id="onframsupport_form_wrapper" class="row col-md-12 clearfix">',
+    	'#suffix' => '</div>',
+		'#no_cache' => TRUE,
+    );
+		
+        $form['some_text'] = array(
+            '#markup' => '<label class="onfarmlabel col-sm-5">'.$labeltext.'</label>'
+          );
+	$form['sales_region'] = array(
+		'#type' => 'select',
+    	//'#title' => t('Select a Category'),
+    	'#prefix' => '<div id="sales_region" class="col-sm-3 clearfix">',
+    	'#suffix' => '</div>',
+		'#no_cache' => TRUE,
+		'#options' =>  custom_get_taxonomy_children($catcode,$params_SR),
+		//'#default_value' => $catcode,
+		//'#description' => t('Example: EID Readers'),
+		/*'#ajax' => array(
+				'event' => 'change',
+				'callback' => 'support_form_ajax_callback_subcategory',
+				'wrapper' => 'subcategory',
+				)*/
+	);
+	
+	$form['sales_brand'] = array(
+		'#type' => 'select',
+    	//'#title' => t('Select a Sub Category'),
+    	'#prefix' => '<div id="sales_brands" class="col-sm-3 clearfix">',
+    	'#suffix' => '</div>',
+		'#no_cache' => TRUE,
+		'#options' => $sales_brands,//custom_get_taxonomy_children($catcode,$params),
+		//'#default_value' => $subcategorycode,
+		//'#description' => t('Example: Portable Readers'),
+		/*'#ajax' => array(
+				'event' => 'change',
+				'callback' => 'support_form_ajax_callback_products',
+				'wrapper' => 'products',
+				)*/
+	);
+	
+        if($language->language == 'en-AU'){$form['sales_brand']['#type']='hidden';$form['sales_brand']['#default_value']=0;unset($form['sales_brand']['#prefix']);unset($form['sales_brand']['#suffix']);}
+        
+	$form['submit'] = array(
+	'#prefix' => '<div id="onfarmsupportselection" class="col-sm-1 clearfix">',
+	'#suffix' => '</div>',	
+    '#type' => 'submit',
+    '#value' => t('Go'),
+	//'#submit' => array('onfarmsupport_form_submit'),
+        '#id' => drupal_html_id('filterReps'),
+        '#ajax' => array(
+                        'callback' => 'onfarmsupport_form_submit',
+                        'wrapper' => 'demo-demo-form', 
+                        'event' => 'click',
+                        'method' => 'replace',
+                        'effect' => 'fade',
+                      ),
+
+    );
+        
+          $form['output'] = array(
+            '#prefix' => '<div id="demo-demo-form" class="">'."{$html_out}",
+            '#suffix' => '</div>',
+          );
+          
+	return $form;
+}
+
+
+
+/**
+ * Submit Process a block support form submission.
+ */
+function onfarmsupport_form_submit($form, &$form_state) {
+	#drupal_set_message('<pre>support_form_submit:form_state '.print_r($form_state,1).'</pre>');
+	// The support form relies on control of the redirect destination for its
+	// functionality, so we override any static destination set in the request,
+	// for example by drupal_access_denied() or drupal_not_found()
+	// (see http://drupal.org/node/292565).
+	if (isset($_GET['destination']))
+		unset($_GET['destination']);
+	
+	// Check to see if the form was submitted empty.
+	// If it is empty, display an error message.
+	// (This method is used instead of setting #required to TRUE for this field
+	//if ($form_state['values']['sales_region']==0) {
+	//	form_set_error('sales_region',t('Please Check your Selection'));
+     	//	return  '<div id="demo-demo-form" class="col-sm-12"></div>';
+	//}
+	//else
+	//{
+		$sales_region = intval($form_state['values']['sales_region']);
+                $sales_brand = intval($form_state['values']['sales_brand']);
+                $form_state['rebuild'] = TRUE;
+                
+            
+                //drupal_goto('resources/'.$product_node);
+		// This is handled by the view and redirecting the browser to the view page
+		//$form_state['redirect'] = array('resources/'.$product_node);
+                 $farmreps = _onfarmsupport_getagentsdata($sales_region,$sales_brand);
+                 $html =  _onfarmsupport_rendertemplate($farmreps);
+               // dsm($farmreps);
+                return  "<div id='demo-demo-form'>{$html}</div>";
+	//}
+}
+
+function _onfarmsupport_rendertemplate($farmreps)
+{
+    global $language;
+   // dsm($farmreps);
+    $htmloutput = "";
+    
+    foreach ($farmreps as $rep)
+    {
+        if(!empty($rep)){
+        $image_url = file_create_url($rep['image']['uri']);
+        $name = $rep['full_name'];
+        $title = $rep['title'];
+        $cat_string ="";
+        $reg_string ="";
+        $mobile = $rep['mobile_number'];
+        $email = $rep['email_address'];
+        
+        $arraylen_cat = count($rep['category']);
+        $arraylen_reg = count($rep['region']);        
+         $comma_c = $comma_r ="";
+        ($arraylen_cat>1)?$comma_c=", ":$comma_c="";
+       ($arraylen_reg>1)?$comma_r=", ":$comma_r="";
+            
+        
+        
+        foreach($rep['category'] as $cat)
+        {
+             
+             $cat_string .= $cat->name_original.$comma_c;
+        }
+        foreach($rep['region'] as $reg)
+        {
+             $reg_string .= $reg->name_original.$comma_r;
+        }
+                        $brtag = '<br/>';
+          if($language->language == 'en-AU'){$cat_string=$brtag='';$reg_string=$rep['body'];}
+        
+        $tempstring = "<div class='col-sm-6 onfarmrep clearfix'>"
+                . "<div class='col-xs-4'><img src='{$image_url}'/></div>"
+                . "<div class='col-xs-8'><h3>{$name}</h3>"
+                . "<label>{$title}</label><br/>"
+                . "<label class='cathide'>{$cat_string}</label>{$brtag}<label>{$reg_string} </label><br/>"
+                . "<label class='phonelink'> <a href='tel:{$mobile}'>{$mobile}</a></label><br/>"
+                . "<label><a href='mailto:{$email}'>{$email}</a></label></div>"
+                . "</div>";
+        $htmloutput.=$tempstring;  
+        }
+    }
+    
+    return  $htmloutput;
+}
+
+function _onfarmsupport_getagentsdata($sales_region,$sales_brand)
+{
+    global $language;
+    $farmreps = array();
+    $result = null;
+       
+    $sql = "SELECT DISTINCT node.nid AS nid FROM 
+                    node node
+                    INNER JOIN taxonomy_index taxonomy_index ON node.nid = taxonomy_index.nid
+                    WHERE (( (node.nid IN  (SELECT tn.nid AS nid
+                    FROM 
+                    taxonomy_index tn
+                    LEFT OUTER JOIN taxonomy_term_hierarchy th ON th.tid = tn.tid
+                    LEFT OUTER JOIN taxonomy_term_hierarchy th1 ON th.parent = th1.tid";
+    
+    if(empty($sales_region) && empty($sales_brand))
+    {
+         
+           $sql_all=" )) )AND(( (node.status = '1') AND (node.type IN  ('on_farm_support')) AND (node.language IN  ('{$language->language}'))  )))  ";
+          // dsm($sql.$sql_all);             
+           $result = db_query($sql.$sql_all);
+                         
+    }
+    else if(empty($sales_brand))
+    {
+        $sql_by_region = " WHERE ( (tn.tid = :tid) OR (th1.tid = :tid) ))) )AND(( (node.status = '1') AND (node.type IN  ('on_farm_support')) AND (node.language IN  ('{$language->language}')) ))) ";
+        $result = db_query($sql.$sql_by_region,array(':tid'=>$sales_region));
+        
+    }
+    else if(empty($sales_region))
+    {
+        $sql_by_brandcat = " )) )AND(( (node.status = '1') AND (node.type IN  ('on_farm_support')) AND (node.language IN  ('{$language->language}')) AND (taxonomy_index.tid = :thnid) AND (taxonomy_index.tid = :thnid) )))";
+        $result = db_query($sql.$sql_by_brandcat,array(':thnid'=>$sales_brand));
+        
+    } 
+    else
+    {
+        $sql_both_selected = " WHERE ( (tn.tid = :tid) OR (th1.tid = :tid) ))) )AND(( (node.status = '1') AND (node.type IN  ('on_farm_support')) AND (node.language IN  ('{$language->language}')) AND (taxonomy_index.tid = :thnid) AND (taxonomy_index.tid = :thnid) )))";
+         $result = db_query($sql.$sql_both_selected,array(':tid'=>$sales_region,':thnid'=>$sales_brand));
+        
+        
+    }
+    
+     /*$result = db_query("SELECT node.nid AS nid FROM 
+                        {node} node
+                        INNER JOIN {taxonomy_index} taxonomy_index ON node.nid = taxonomy_index.nid
+                        WHERE (( (node.nid IN  (SELECT tn.nid AS nid
+                        FROM 
+                        {taxonomy_index} tn
+                        LEFT OUTER JOIN {taxonomy_term_hierarchy} th ON th.tid = tn.tid
+                        LEFT OUTER JOIN {taxonomy_term_hierarchy} th1 ON th.parent = th1.tid
+                        {$salesselected})) )AND(( (node.status = '1') AND (node.type IN  ('on_farm_support')) AND (node.language IN  ('{$language->language}') {$salesregionselected} )))", array(':tnid' => $sales_brand,':thnid'=>$sales_region));*/
+
+    
+    if(!empty($result)){
+        foreach ($result as $term) {
+            // $term contains the object for the taxonomy term.
+                              $temp_node= node_load($term->nid);
+                             
+                              $node_wrap = entity_metadata_wrapper('node',$temp_node);
+                               //dsm($node_wrap->body->value());
+                               $tempbody = $node_wrap->body->value();
+                              $temparry =array(
+                              'full_name'=> $node_wrap->title->value(),
+                              'title' => $node_wrap->field_manager_title->value(),
+                              'category' => $node_wrap->field_sales_brands->value(),
+                              'region' => $node_wrap->field_sales_region->value(),
+                              'mobile_number' => $node_wrap->field_phone->value(),
+                              'email_address' => $node_wrap->field_email_address->value(),
+                              'image'=>$node_wrap->field_rep_image->value(),
+                              'body'=>strip_tags($tempbody['value'])    
+                              );
+
+            $farmreps[] = $temparry;
+          }
+    }
+      
+      return $farmreps;
+}
+
+
+
+
+
+/*
+SELECT node.nid AS nid, node.title AS node_title, 'node' AS field_data_field_rep_image_node_entity_type, 'node' AS field_data_field_manager_title_node_entity_type, 'node' AS field_data_field_sales_brands_node_entity_type, 'node' AS field_data_field_phone_node_entity_type, 'node' AS field_data_field_email_address_node_entity_type, 'node' AS field_data_body_node_entity_type, 'on_farm_support:page' AS view_name
+FROM 
+{node} node
+INNER JOIN {taxonomy_index} taxonomy_index ON node.nid = taxonomy_index.nid
+WHERE (( (node.nid IN  (SELECT tn.nid AS nid
+FROM 
+{taxonomy_index} tn
+LEFT OUTER JOIN {taxonomy_term_hierarchy} th ON th.tid = tn.tid
+LEFT OUTER JOIN {taxonomy_term_hierarchy} th1 ON th.parent = th1.tid
+WHERE ( (tn.tid = '41') OR (th1.tid = '41') ))) )AND(( (node.status = '1') AND (node.type IN  ('on_farm_support')) AND (node.language IN  ('en-NZ')) AND (taxonomy_index.tid = '75') AND (taxonomy_index.tid = '75') ))) */

@@ -1,0 +1,14 @@
+name = onfarmsupport
+description = "OnFarm Support"
+dependencies[] = taxonomy
+dependencies[] = i18n
+dependencies[] = i18n_string
+dependencies[] = i18n_translation
+dependencies[] = block
+dependencies[] = support
+package = TTG
+core = 7.x
+
+files[] = onfarmsupport.module
+files[] = onfarmsupport_block_form.tpl.php
+files[] = onfarmsupport_form.js
