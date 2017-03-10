@@ -1,0 +1,11 @@
+name = Dealerblock
+description = "Dealerblock"
+dependencies[] = dealers
+dependencies[] = location
+package = TTG
+core = 7.x
+
+files[] = dealerblock_block_form.tpl.php
+files[] = dealerblock.js
+files[] = includes/views/handlers/tempclassproximity.inc
+files[] = includes/views/dealerblock.views.inc

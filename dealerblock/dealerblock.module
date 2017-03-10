@@ -1,0 +1,741 @@
+<?php
+
+/**
+ * Implements hook_help().
+ */
+function dealerblock_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#dealerblock':
+      return t('<a href="@tt_url">Tru-Test Delearblock</a> is a custom support module built in Drupal based on Tru-Test Group Information. Please contact Help Desk @ Tru-Test Group for more information.
+			 this module is used to redirect users from selecting their country and region from a block to dealer locator page. ');
+  }
+}
+
+
+/**
+ * Implements hook_permission().
+ */
+function  dealerblock_permission() {
+  return array(
+    'administer tru-test dealerblock' => array(
+      'title' => t('Administer Tru-Test dealerblock'),
+      'description' => t('Perform maintenance tasks for Tru-Test dealerblock.'),
+    ),
+	'access tru-test dealerblock' => array(
+      'title' => t('View Tru-Test dealerblock Blocks'),
+    ),
+  );
+}
+
+
+/**
+ * User view access callback.
+ *
+ * @param $account
+ *   Can either be a full user object or a $uid.
+ */
+function dealerblock_view_access($account) {
+  $uid = is_object($account) ? $account->uid : (int) $account;
+  // Never allow access to view the anonymous user account.
+  if ($uid) {
+    // Admins can view all, users can view own profiles at all times.
+    if ($GLOBALS['user']->uid == $uid || user_access('administer tru-test dealerblock')) {
+      return TRUE;
+    }
+    else if (user_access('access tru-test dealerblock')) {
+      // At this point, load the complete account object.
+      if (!is_object($account)) {
+        $account = user_load($uid);
+      }
+      return (is_object($account) && $account->status);
+    }
+  }
+  return FALSE;
+}
+
+
+/**
+ * Implements hook_requirements().
+ *
+ * @param string $phase
+ * @return array
+ */
+function dealerblock_requirements($phase) {
+	$requirements = array();
+	// Ensure translations don't break at install time
+	$t = get_t();
+	
+	// Report Drupal version
+  	if ($phase == 'runtime') {
+      $requirements['drupal'] = array(
+        'title' => $t('Drupal'),
+        'value' => VERSION,
+        'severity' => REQUIREMENT_INFO,
+      );
+    }
+	$requirements['dealerblock'] = array(
+		'title' => $t('Tru-test Group Support Dependency Modules '),
+	);
+
+	$requirements['dealerblock']['value'] = $t('Installed');
+	return $requirements;
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function dealerblock_theme() {
+	return array(
+		'dealernlock_blocks_form' => array(
+		'render element' => 'form',
+		'template' => 'dealerblock_block_form')
+	);
+}
+
+
+/**
+ * Process variables for dealerblock_block_form.tpl.php.
+ *
+ * The $variables array contains the following arguments:
+ * - $form
+ *
+ * @see support_block_form.tpl.php
+ */
+function template_preprocess_dealerblock_block_form(&$variables) {
+	$variables['dealerblock'] = array();
+	$hidden = array();
+	// Provide variables named after form keys so themers can print each element independently.
+	foreach (element_children($variables['form']) as $key) {
+		$type = $variables['form'][$key]['#type'];
+		if ($type == 'hidden' || $type == 'token')
+			$hidden[] = drupal_render($variables['form'][$key]);
+		else
+			$variables['dealerblock'][$key] = drupal_render($variables['form'][$key]);
+	}
+	// Hidden form elements have no value to themers. No need for separation.
+	$variables['dealerblock']['hidden'] = implode($hidden);
+	// Collect all form elements to make it easier to print the whole form.
+	$variables = implode($variables['dealerblock']);
+}
+
+
+/**
+ * Implementation of hook_block_info().
+ */
+function dealerblock_block_info() {	
+	
+        $blocks= array();
+	$blocks['dealerblock'] = array(
+    	'info' => t('Trutest dealerblock'),
+    	'cache' => DRUPAL_NO_CACHE,
+		'status' => TRUE, 
+		'properties' => array ('administrative' => FALSE),
+		'weight' =>50,
+		'region' => 'regional_page_right', // Not usually provided.
+		'visibility' => BLOCK_VISIBILITY_LISTED, // Not usually provided.
+		'pages' => 'contact-us'."\n", // Not usually provided.
+		'translatable' => TRUE,
+  	);
+	
+        $blocks['dealermapfilterblock'] = array(
+    	'info' => t('Trutest dealer map filter block'),
+    	'cache' => DRUPAL_NO_CACHE,
+		'status' => TRUE, 
+		'properties' => array ('administrative' => FALSE),
+		'weight' =>-50,
+		'region' => 'regional_product_left', // Not usually provided.
+		'visibility' => BLOCK_VISIBILITY_LISTED, // Not usually provided.
+		'pages' => 'contact-us'."\n", // Not usually provided.
+		'translatable' => TRUE,
+  	);
+        
+        /*distributor filter in contact page added here as well.*/
+        $blocks['distributormapfilterblock'] = array(
+    	'info' => t('Trutest distributor map filter block'),
+    	'cache' => DRUPAL_NO_CACHE,
+		'status' => TRUE, 
+		'properties' => array ('administrative' => FALSE),
+		'weight' =>-50,
+		'region' => 'regional_product_left', // Not usually provided.
+		'visibility' => BLOCK_VISIBILITY_LISTED, // Not usually provided.
+		'pages' => 'contact-us'."\n", // Not usually provided.
+		'translatable' => TRUE,
+  	);
+	
+
+	return $blocks;
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function dealerblock_block_save($delta = '', $edit = array()) {}
+
+function block_dealerblock_page() {
+  $page = array(
+    '#type' => 'markup',
+    '#markup' => t('The Block Tru-Test dealerblock provides forms for data to show. Enable and configure them on <a href="@url">the block admin page</a>.', array('@url' => url('admin/structure/block'))),
+  );
+  return $page;
+}
+
+
+
+/**
+ * Implements hook_block_configure().
+ */
+function dealerblock_block_configure($delta='') {
+	$form = array();
+	switch($delta) {
+
+		case 'dealerblock' :	$form['body'] = array(
+												'#type' => 'text_format',
+												'#title' => t('Tru-Test dealerblock Body text here'),
+												'#description' => t('This text will appear in the Tru-Test dealerblock block.'),
+												'#default_value' => t('<p><img alt="Manuals" src="'.SUPPORT_THEME_PATH.'/images/icons/Manuals-icon.png" /></p>'),
+											);
+											break;
+                case 'dealermapfilterblock' :	$form['body'] = array(
+												'#type' => 'text_format',
+												'#title' => t('Tru-Test dealermap filter block Body text here'),
+												'#description' => t('This text will appear in the Tru-Test dealermapfilterblock block.'),
+												'#default_value' => t('<p><img alt="Manuals" src="'.SUPPORT_THEME_PATH.'/images/icons/Manuals-icon.png" /></p>'),
+											);
+											break;  
+                 case 'distributormapfilterblock' :	$form['body'] = array(
+												'#type' => 'text_format',
+												'#title' => t('Tru-Test distributor map filter block Body text here'),
+												'#description' => t('This text will appear in the Tru-Test distributormapfilterblock block.'),
+												'#default_value' => t('<p><img alt="Manuals" src="'.SUPPORT_THEME_PATH.'/images/icons/Manuals-icon.png" /></p>'),
+											);
+											break;                                                                    
+		
+		default :							break;
+	}
+	return $form;
+}
+
+
+/**
+ * Custom function to assemble renderable array for block content.
+ * Returns a renderable array with the block content.
+ * Implements hook_block_view().
+ * @return
+ * returns a renderable array of block content.
+ */
+function dealerblock_block_view($delta = '') {
+                
+	$block = array();
+	if (user_access('access tru-test dealerblock')) {
+		switch($delta) {
+
+			case 'dealerblock' :			
+                                        $block['subject'] = t('Store Locator');
+                                        $block['body'] = array('#theme' => 'trutestgroup','#url' => 'contact-us', '#title' => t('<p><img alt="Manuals" src="'.SUPPORT_THEME_PATH.'/images/icons/Manuals-icon.png" /></p>'));
+                                        $block['message'] = array('prefix' => '<div class="trutest-manuals-block-message" id="block-message-'.drupal_html_class($delta).'">', 'markup' => $block['content']['#title'], 'suffix' => '</div>');
+                                        $block['content'] = drupal_get_form('dealerblock_form');
+                                        break;
+                        case 'dealermapfilterblock' :			
+                                        $block['subject'] = t('Dealer map filter');
+                                        $block['body'] = array('#theme' => 'trutestgroup','#url' => 'contact-us', '#title' => t('<p><img alt="Manuals" src="'.SUPPORT_THEME_PATH.'/images/icons/Manuals-icon.png" /></p>'));
+                                        $block['message'] = array('prefix' => '<div class="trutest-manuals-block-message" id="block-message-'.drupal_html_class($delta).'">', 'markup' => $block['content']['#title'], 'suffix' => '</div>');
+                                        $block['content'] = drupal_get_form('dealermapfilterblock_form');
+                                        break; 
+                        case 'distributormapfilterblock' :			
+                                        $block['subject'] = t('Distributor map filter');
+                                        $block['body'] = array('#theme' => 'trutestgroup','#url' => 'contact-us', '#title' => t('<p><img alt="Manuals" src="'.SUPPORT_THEME_PATH.'/images/icons/Manuals-icon.png" /></p>'));
+                                        $block['message'] = array('prefix' => '<div class="trutest-manuals-block-message" id="block-message-'.drupal_html_class($delta).'">', 'markup' => $block['content']['#title'], 'suffix' => '</div>');
+                                        $block['content'] = drupal_get_form('distributormapfilterblock_form');
+                                        break;             
+									
+			default :	break;
+		}
+	}
+     else
+      $block['content'] = t('Access is Restricted');
+	
+	//dsm('<pre>dealerblock_block_view->block: '.print_r($block,1).'</pre>');
+	return $block;
+}
+
+
+
+
+/**
+ * Implementation of hook_form().
+ */
+function dealerblock_form($form, &$form_state) {
+	global $language;
+        $block_text="";
+        $path = drupal_get_path_alias();
+        $country_code =  'nz';
+	if(module_exists('selector')) {
+		$country_code_language = _selector_language_countries();
+		if(array_key_exists('country_code',$_SESSION) && !empty($_SESSION['country_code'])) {
+			$scc = strtolower($_SESSION['country_code']);
+			$country_code = strtolower((!empty($scc)) ? $scc : 'nz');
+		}
+		$country_code = strtolower(array_key_exists($country_code,$country_code_language) ? $country_code : 'nz');
+	}
+	else {
+		$country_code_language = array('global' => 'en', 'au' => 'en-AU', 'gb' => 'en-GB', 'nz' => 'en-NZ', 'us' => 'en-US', 'spanish' => 'es', 'br' => 'pt-br');
+		$country_code = strtolower(array_search($language->language,$country_code_language) ? array_search($language->language,$country_code_language) : 'nz');
+	}
+        
+ 
+        
+	
+        $region_list = dealers_custom_get_region_list($country_code);
+        $regioncode = !empty($form_state['values']['region']) ? $form_state['values']['region'] : '';
+        $c = !empty($form_state['values']['city']) ? $form_state['values']['city'] : '';
+        
+	$form = array(
+    	'#prefix' => '<div id="dealerblock_form_wrapper" class="">',
+    	'#suffix' => '</div>',
+		'#no_cache' => TRUE,
+    );
+		
+        
+        
+               
+	If($language->language == 'en-NZ') {
+		
+		$block_text = t('Find your local Weighing & EID dealer.');
+	}
+        elseif($language->language == 'en-AU')
+        {
+           
+                $block_text = t('Find your local retailer.');
+        }
+	
+        $form['some_text'] = array(
+            '#markup' => '<label class="textblock">'.$block_text.'</label>'
+          );
+	$form['region'] = array(
+		#'#title' => $region_label,
+		'#prefix' => '<div id="region_select" class="col-sm-5 clearfix">',
+		'#suffix' => '</div>',
+		'#type' => 'select',
+		'#default_value' => $regioncode,
+		'#no_cache' => TRUE,
+		'#options' => $region_list,
+		'#ajax' => array(
+				'event' => 'change',
+				'callback' => 'dealers_block_form_ajax_callback_city',
+				'wrapper' => 'city_select',
+				)
+	);
+	
+	$city_list = dealers_custom_get_city_list($country_code,$regioncode);
+	$form['city'] = array(
+		#'#title' => $city_label,
+		'#prefix' => '<div id="city_select" class="col-sm-5 clearfix">',
+		'#suffix' => '</div>',
+		'#type' => 'select',
+		'#default_value' => $c,
+		'#no_cache' => TRUE,
+		'#options' => $city_list,
+	);
+        
+        $form['country'] = array(
+		#'#title' => $city_label,
+	        '#type' => 'hidden',
+		'#default_value' => $country_code,
+		'#no_cache' => TRUE,
+		
+	);
+	
+          
+	$form['submit'] = array(
+	'#prefix' => '<div id="dealerblocksubmit" class="col-sm-2 clearfix">',
+	'#suffix' => '</div>',	
+    '#type' => 'submit',
+    '#value' => t('Go'),
+	//'#submit' => array('onfarmsupport_form_submit'),
+        '#id' => drupal_html_id('taketodealerlocator'),
+        '#submit' => array('dealerblock_form_submit'),
+                       
+
+    );
+        
+                 
+	return $form;
+}
+
+
+function dealerblock_form_submit($form, &$form_state)
+{
+    if (isset($_GET['destination']))
+		unset($_GET['destination']);
+    //dsm($form_state);
+                $region = filter_xss($form_state['values']['region']);
+                $city = filter_xss($form_state['values']['city']);
+                $country = filter_xss($form_state['values']['country']);
+                 $url = "no";
+                 $query =  array();
+                if(!empty($region) && !empty($city) && !empty($country))
+                {
+                    $url = "/dealers/{$country}/{$region}/{$city}";
+                    $query =  array(
+                                    'query' => array(
+                                        'scc' => $country,
+                                        'src'=>$region,
+                                        'sc'=>$city
+                                    )
+                                    );
+                    //ealers/nz/auk/albany?scc=nz&src=auk&sc=albany
+                }
+                else if(!empty($region) && !empty($country))
+                {
+                    $url = "/dealers/{$country}/{$region}";
+                    //drupal_goto($url);
+                    // return "he;;p";
+                    $query =  array(
+                                    'query' => array(
+                                        'scc' => $country,
+                                        'src'=>$region,
+                                        )
+                                     );
+                }
+                else                
+                {  $url = "/dealers";
+                        
+                }
+                
+    //$form_state['rebuild'] = TRUE;            
+//dsm($url);    
+drupal_goto($url,$query);
+}
+
+
+function dealermapfilterblock_form($form, &$form_state)
+{
+        drupal_add_js(drupal_get_path('module', 'dealerblock') . '/dealerblock.js');
+
+    	global $language;
+	$path = drupal_get_path_alias();
+	if(module_exists('selector')) {
+		$country_code_language = _selector_language_countries();
+		if(array_key_exists('country_code',$_SESSION) && !empty($_SESSION['country_code'])) {
+			$scc = strtolower($_SESSION['country_code']);
+			$country_code = strtolower((!empty($scc)) ? $scc : 'nz');
+		}
+		$country_code = strtolower(array_key_exists($country_code,$country_code_language) ? $country_code : 'nz');
+	}
+	else {
+		$country_code_language = array('global' => 'en', 'au' => 'en-AU', 'gb' => 'en-GB', 'nz' => 'en-NZ', 'us' => 'en-US', 'spanish' => 'es', 'br' => 'pt-br');
+		$country_code = strtolower(array_search($language->language,$country_code_language) ? array_search($language->language,$country_code_language) : 'nz');
+	}
+		
+	$cc = !empty($form_state['values']['country']) ? $form_state['values']['country'] : $country_code;
+	if(!empty($_REQUEST['scc']) && empty($form_state['values']['country']))
+		$cc = strtolower(check_plain(filter_xss(!empty($_REQUEST['scc']) ? $_REQUEST['scc'] : $country_code)));
+	#print('<pre>dealers_block_form:cc '.print_r($cc,1).'</pre>');
+	$rc = !empty($form_state['values']['region']) ? $form_state['values']['region'] : '';
+	if(!empty($_REQUEST['src']) && empty($form_state['values']['region']))
+		$rc = strtolower(check_plain(filter_xss(!empty($_REQUEST['src']) ? $_REQUEST['src'] : '')));
+	#print('<pre>dealers_block_form:rc '.print_r($rc,1).'</pre>');
+	$c = !empty($form_state['values']['city']) ? $form_state['values']['city'] : '';
+	/*if(!empty($_REQUEST['sc']) && empty($form_state['values']['city']))
+		$c = strtolower(check_plain(filter_xss(!empty($_REQUEST['sc']) ? $_REQUEST['sc'] : '')));*/
+	#print('<pre>dealers_block_form:c '.print_r($c,1).'</pre>');
+	
+	$region_list = dealers_custom_get_region_list($cc);
+	$rl = array_keys($region_list);
+	if(module_exists('smart_ip')) {
+		$smart_ip = smart_ip_get_current_visitor_location_data();
+		#print('<pre>dealers_block_form:smart_ip '.print_r($smart_ip,1).'</pre>');
+		#print('<pre>dealers_block_form:post '.print_r($_POST,1).'</pre>');
+		#print('<pre>dealers_block_form:region_list '.print_r($region_list,1).'</pre>');
+		if(empty($_REQUEST['scc']) && !isset($_POST['ajax_html_ids'])) {
+			$url = 'dealers/'.$cc;
+			$query_url = array('query' => array('scc' => $cc));
+			$region = ((array_key_exists('region',$_SESSION) && !empty($_SESSION['region']) && in_array($_SESSION['region'],$rl,TRUE)) ? $_SESSION['region'] : $rl[1]);
+			$url .= '/'.$region;
+			$query_url['query'] += array('src' => $region);
+			/*
+			if(!empty($_SESSION['city'])) {
+				$url .= '/'.$_SESSION['city'];
+				$query_url['query'] += array('sc' => $_SESSION['city']);
+			}
+			*/
+			if(empty($path))
+				drupal_goto($url, $query_url, 302);
+			else {
+				if(preg_match("/dealers/i", $path) == TRUE)
+					drupal_goto($url, $query_url, 302);
+				else
+					drupal_goto($path, $query_url, 302);
+			}
+		}
+	}
+	
+	$form = array(
+    	'#prefix' => '<div id="dealers_block_form_wrapper">',
+    	'#suffix' => '</div>',
+		'#no_cache' => TRUE,
+    );
+        $block_text="Find your local dealer:";
+          $form['some_text'] = array(
+            '#markup' => '<label class="textblock">'.$block_text.'</label>'
+          );
+        
+            $zipcodeq='';$distq = 50;
+                
+            if(!empty(filter_xss($_REQUEST['dist'])))
+            {
+                $distqtemp = filter_xss($_REQUEST['dist']);
+                if($distqtemp!=0 && ctype_digit(strval($distqtemp))){
+                   
+                       $distq= $distqtemp;
+                }
+            }
+            
+        $form['zip'] = array(
+		'#type' => 'textfield',
+		'#prefix' => '<div id="zip">',
+                '#suffix' => '</div>',
+		'#required' => FALSE,
+		'#default_value' => $zipcodeq,
+		'#no_cache' => FALSE,
+                '#maxlength' => 6,
+                '#attributes' => array('placeholder'=>' ZIP')
+	
+	);  
+          
+        
+        $form['distance'] = array(
+               
+		'#prefix' => '<div id="distance">',
+		'#suffix' => '</div>',
+		'#type' => 'select',
+		'#default_value' => $distq,
+		'#no_cache' => FALSE,
+		'#options' => array(100=>'100 Miles',50=>'50 Miles',25=>'25 Miles')
+	);
+        
+        $form['submit_zip'] = array(
+	'#prefix' => '<div id="trutest-dealers-zip">',
+	'#suffix' => '</div>',	
+        '#type' => 'submit',
+        '#value' => t('Go'),
+            '#submit' => array('dealermapfilterblock_form_submit'),
+        );
+        
+        
+          $form['some_gap'] = array(
+            '#markup' => '<div class="gap" style="width: 1%;display: block;float: left;height:35px"></div>'
+              
+          );
+          
+          
+          
+          
+	$form['country'] = array(
+		'#type' => 'select',
+		'#prefix' => '<div id="country">',
+    	'#suffix' => '</div>',
+		'#required' => TRUE,
+		#'#title' => (preg_match("/dealers/i", $path)) ? t('') : t('Country'),
+		'#default_value' => $cc,
+		'#no_cache' => TRUE,
+		'#options' => dealers_custom_get_countries(),
+		'#ajax' => array(
+				'event' => 'change',
+				'callback' => 'dealers_block_form_ajax_callback_region',
+				'wrapper' => 'region',
+				)
+	);
+	
+	$region_label = ($country_code == 'nz') ? t('Region') : t('State');
+	$region_label = (preg_match("/dealers/i", $path)) ? '' : $region_label;
+	$form['region'] = array(
+		#'#title' => $region_label,
+		'#prefix' => '<div id="region">',
+		'#suffix' => '</div>',
+		'#required' => FALSE,
+		'#type' => 'select',
+		'#default_value' => $rc,
+		'#no_cache' => TRUE,
+		'#options' => $region_list,
+		'#ajax' => array(
+				'event' => 'change',
+				'callback' => 'dealers_block_form_ajax_callback_city',
+				'wrapper' => 'city',
+				)
+	);
+	
+	#$city_label = ($country_code == 'nz') ? t('Town') : t('City');
+	#$city_label = (preg_match("/dealers/i", $path)) ? '' : $city_label;
+	$city_list = dealers_custom_get_city_list($cc,$rc);
+	$form['city'] = array(
+		#'#title' => $city_label,
+		'#prefix' => '<div id="city">',
+		'#suffix' => '</div>',
+		'#type' => 'select',
+		'#default_value' => $c,
+		'#no_cache' => TRUE,
+		'#options' => $city_list,
+	);
+        
+        
+        
+        
+	
+	$form['submit'] = array(
+	'#prefix' => '<div id="trutest-dealers-selection">',
+	'#suffix' => '</div>',	
+    '#type' => 'submit',
+    '#value' => t('Go'),
+	'#submit' => array('dealermapfilterblock_form_submit'),
+    );
+	return $form;
+}
+
+function dealermapfilterblock_form_submit($form, &$form_state)
+{
+     if (isset($_GET['destination']))
+		unset($_GET['destination']);
+    //dsm($form_state);
+                $region = filter_xss($form_state['values']['region']);
+                $city = filter_xss($form_state['values']['city']);
+                $country = filter_xss($form_state['values']['country']);
+                 $zipc= filter_xss($form_state['values']['zip']);
+                 $dist= filter_xss($form_state['values']['distance']);
+                 $url = "no";
+                 $query =  array();
+                if(!empty($region) && !empty($city) && !empty($country))
+                {
+                    $url = "/contact-us";
+                    $query =  array(
+                                    'query' => array(
+                                        'scc' => $country,
+                                        'src'=>$region,
+                                        'sc'=>$city
+                                    )
+                                    );
+                    //ealers/nz/auk/albany?scc=nz&src=auk&sc=albany
+                }
+                else if(!empty($zipc) && !empty($country))
+                    {
+                        $url = "/contact-us";
+                        $query =  array(
+                                    'query' => array(
+                                        'scc' => $country,
+                                        'zipc'=>$zipc,
+                                        'dist'=>$dist
+                                    )
+                                    );
+                    }
+                else if(!empty($region) && !empty($country))
+                {
+                    $url = "/contact-us";
+                    //drupal_goto($url);
+                    // return "he;;p";
+                    $query =  array(
+                                    'query' => array(
+                                        'scc' => $country,
+                                        'src'=>$region,
+                                        )
+                                     );
+                }
+                else                
+                {  $url = "/contact-us";
+                        
+                }
+                
+    //$form_state['rebuild'] = TRUE;            
+//dsm($url);    
+drupal_goto($url,$query);
+}
+
+
+
+function distributormapfilterblock_form($form, &$form_state)
+{
+    global $language;
+		if(module_exists('selector')) {
+		$country_code_language = _selector_language_countries();
+		if(array_key_exists('country_code',$_SESSION) && !empty($_SESSION['country_code'])) {
+			$scc = strtolower($_SESSION['country_code']);
+			$country_code = strtolower((!empty($scc)) ? $scc : 'nz');
+                            }
+                            $country_code = strtolower(array_key_exists($country_code,$country_code_language) ? $country_code : 'nz');
+                    }
+                    else {
+                            $country_code_language = array('global' => 'en', 'au' => 'en-AU', 'gb' => 'en-GB', 'nz' => 'en-NZ', 'us' => 'en-US', 'spanish' => 'es', 'br' => 'pt-br');
+                            $country_code = strtolower(array_search($language->language,$country_code_language) ? array_search($language->language,$country_code_language) : 'nz');
+                    }
+	$cc = strtolower(check_plain(filter_xss(!empty($_REQUEST['scc']) ? $_REQUEST['scc'] : $country_code)));
+	#print('<pre>distributors_block_form:cc '.print_r($cc,1).'</pre>');
+	
+	$form = array(
+    	'#prefix' => '<div id="distributors_block_form_wrapper">',
+    	'#suffix' => '</div>',
+		'#no_cache' => TRUE,
+    );
+        $block_text="Find a distributor:";
+          $form['some_text'] = array(
+            '#markup' => '<label class="textblock">'.$block_text.'</label>'
+          );
+          
+	$form['country'] = array(
+		'#type' => 'select',
+		'#prefix' => '<div id="country">',
+    	'#suffix' => '</div>',
+		#'#title' => t('Country'),
+		'#default_value' => $cc,
+		'#no_cache' => TRUE,
+		'#options' => distributors_custom_get_countries(),
+	);
+	$form['submit'] = array(
+	'#prefix' => '<div id="trutest-distributors-selection">',
+	'#suffix' => '</div>',	
+    '#type' => 'submit',
+    '#value' => t('Go'),
+	'#submit' => array('distributormapfilterblock_form_submit'),
+    );
+	return $form;
+    
+}
+
+function distributormapfilterblock_form_submit($form, &$form_state)
+{
+    #print('<pre>support_form_submit:form_state '.print_r($form_state,1).'</pre>');
+	// The support form relies on control of the redirect destination for its
+	// functionality, so we override any static destination set in the request,
+	// for example by drupal_access_denied() or drupal_not_found()
+	// (see http://drupal.org/node/292565).
+	if (isset($_GET['destination']))
+		unset($_GET['destination']);
+		
+	// Check to see if the form was submitted empty.
+	// If it is empty, display an error message.
+	// (This method is used instead of setting #required to TRUE for this field
+	if (empty($form_state['values'])) {
+		
+	}
+	else
+	{
+		$country = @$form_state['values']['country'];
+		/*$region = @$form_state['values']['region'];
+		$city = @$form_state['values']['city'];*/
+		// This is handled by the view and redirecting the browser to the view page
+                    $query =  array(
+                                    'query' => array(
+                                        'scc' => $country,
+                                    )
+                                     );
+                     $url = "/contact-us";
+                    
+		drupal_goto($url,$query);
+	}
+}
+
+function dealerblock_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'dealerblock') . '/includes/views',
+  );
+}
