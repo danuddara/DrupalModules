@@ -24,7 +24,7 @@ define('SUPPORT_CONTENT_TYPES', 'on_farm_support');
 function onfarmsupport_help($path, $arg) {
   switch ($path) {
     case 'admin/help#onfarmsupport':
-      return t('<a href="@tt_url">Tru-Test On Farmm support</a> is a custom support module built in Drupal based on Tru-Test Group Information. Please contact Help Desk @ Tru-Test Group for more information.
+      return t('<a href="@tt_url">On Farmm support</a> is a custom support module built in Drupal based on Group Information. Please contact Help Desk @ Tru-Test Group for more information.
 			 this module is used to add a filter to filter on farm representatives. ');
   }
 }
