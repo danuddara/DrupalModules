@@ -6,7 +6,7 @@
 function dealerblock_help($path, $arg) {
   switch ($path) {
     case 'admin/help#dealerblock':
-      return t('<a href="@tt_url">Tru-Test Delearblock</a> is a custom support module built in Drupal based on Tru-Test Group Information. Please contact Help Desk @ Tru-Test Group for more information.
+      return t('<a href="@tt_url">Delearblock</a> is a custom support module built in Drupal based on  Group Information. Please contact Help Desk @ Tru-Test Group for more information.
 			 this module is used to redirect users from selecting their country and region from a block to dealer locator page. ');
   }
 }
